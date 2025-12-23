@@ -6,21 +6,25 @@ import LandingPage from './components/LandingPage';
 import { decorateImage } from './services/geminiService';
 import { AppStatus, DecorationResult } from './types';
 
-// Fix: Change window.aistudio declaration to use 'any' to avoid conflict with pre-defined AIStudio type
-// which causes errors about identical modifiers and subsequent property declarations.
+// Fix for TypeScript errors: Move AIStudio into global scope and use optional property to match environment expectations
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey(): Promise<boolean>;
+    openSelectKey(): Promise<void>;
+  }
+
   interface Window {
-    aistudio: any;
+    aistudio?: AIStudio;
   }
 }
 
-const AUTO_STYLES = [
-  "Estilo Moderno Minimalista",
-  "Estilo Industrial Moderno",
-  "Estilo Escandinavo",
-  "Estilo Boho Chic com plantas",
-  "Estilo Luxo Contemporâneo",
-  "Estilo Japandi funcional"
+const QUICK_STYLES = [
+  { label: "Moderno Minimalista", prompt: "Estilo minimalista com cores neutras, poucos móveis de design e luz natural abundante." },
+  { label: "Industrial", prompt: "Estilo industrial com paredes de tijolos, móveis de metal e couro, tubulações aparentes e luz quente." },
+  { label: "Biofílico", prompt: "Design biofílico com muitas plantas, materiais naturais como madeira clara e pedras, criando uma selva urbana." },
+  { label: "Luxo Clássico", prompt: "Estilo luxuoso clássico com molduras na paredes, mármore, detalhes em ouro e tecidos de veludo." },
+  { label: "Escandinavo", prompt: "Design escandinavo funcional, limpo, com madeira clara e tons de cinza e branco." },
+  { label: "Cyberpunk 2077", prompt: "Estilo futurista cyberpunk com neon, tons de azul e roxo, móveis high-tech e clima noturno." }
 ];
 
 const App: React.FC = () => {
@@ -32,6 +36,7 @@ const App: React.FC = () => {
   const [result, setResult] = useState<DecorationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Fix for API key checking logic using window.aistudio
   useEffect(() => {
     const checkKey = async () => {
       if (window.aistudio) {
@@ -45,70 +50,48 @@ const App: React.FC = () => {
     }
   }, [showApp]);
 
+  // Handle opening the key selector and mitigating race conditions as per guidelines
   const handleOpenKeySelector = async () => {
     if (window.aistudio) {
       await window.aistudio.openSelectKey();
-      setHasKey(true); // Assume success per instructions
+      // Assume the key selection was successful to avoid race conditions
+      setHasKey(true);
     }
   };
 
-  const handleImageSelected = useCallback((base64: string) => {
-    setOriginalImage(base64);
-    setResult(null);
-    setError(null);
-  }, []);
-
   const processDecoration = async (selectedPrompt: string) => {
-    if (!originalImage) {
-      setError("Por favor, envie uma foto primeiro.");
-      return;
-    }
+    if (!originalImage) return;
 
     setStatus(AppStatus.PROCESSING);
     setError(null);
 
     try {
       const decoratedImageUrl = await decorateImage(originalImage, selectedPrompt);
-      const newResult: DecorationResult = {
+      setResult({
         id: Date.now().toString(),
         originalImage,
         decoratedImage: decoratedImageUrl,
         prompt: selectedPrompt,
         timestamp: Date.now()
-      };
-      setResult(newResult);
+      });
       setStatus(AppStatus.SUCCESS);
       setTimeout(() => {
         document.getElementById('results-area')?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
     } catch (err: any) {
-      console.error(err);
-      if (err.message?.includes("Requested entity was not found")) {
-        setHasKey(false);
-        setError("Erro de autenticação. Por favor, selecione sua chave de API novamente.");
-      } else {
-        setError(err.message || "Erro ao processar imagem.");
-      }
+      // If the request fails with this specific error, reset key selection state
+      if (err.message?.includes("Requested entity was not found")) setHasKey(false);
+      setError(err.message || "Falha na geração.");
       setStatus(AppStatus.ERROR);
     }
   };
 
   const handleDecorate = () => {
     if (!originalImage || !prompt.trim()) {
-      setError("Foto e descrição são obrigatórios.");
+      setError("Preencha a descrição ou escolha um estilo.");
       return;
     }
     processDecoration(prompt);
-  };
-
-  const handleAutoDecorate = () => {
-    if (!originalImage) {
-      setError("Envie uma foto antes de usar o estilo aleatório.");
-      return;
-    }
-    const randomStyle = AUTO_STYLES[Math.floor(Math.random() * AUTO_STYLES.length)];
-    setPrompt(randomStyle);
-    processDecoration(randomStyle);
   };
 
   const handleReset = () => {
@@ -119,171 +102,145 @@ const App: React.FC = () => {
     setError(null);
   };
 
-  if (!showApp) {
-    return <LandingPage onStart={() => setShowApp(true)} />;
-  }
+  if (!showApp) return <LandingPage onStart={() => setShowApp(true)} />;
 
   const isProcessing = status === AppStatus.PROCESSING;
 
   return (
-    <div className="min-h-screen pb-20 bg-slate-50/50 animate-fade-in">
-      <nav className="glass-morphism sticky top-0 z-50 px-6 py-4 mb-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setShowApp(false)}>
-            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform">
+    <div className="min-h-screen bg-slate-50 flex flex-col animate-fade-in">
+      {/* NAVBAR */}
+      <nav className="glass-morphism sticky top-0 z-50 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowApp(false)}>
+            <div className="bg-slate-900 p-2 rounded-xl text-white shadow-lg">
               <i className="fa-solid fa-house-chimney-window"></i>
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">DecorAI</h1>
-              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Estúdio de Design</span>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">DecorAI</h1>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered by Gemini</span>
             </div>
           </div>
+          
           <div className="flex items-center gap-4">
             {!hasKey && (
-              <button 
-                onClick={handleOpenKeySelector}
-                className="text-[10px] font-black bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-2"
-              >
-                <i className="fa-solid fa-key"></i> CONFIGURAR CHAVE
+              <button onClick={handleOpenKeySelector} className="text-[10px] font-black bg-red-100 text-red-600 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                <i className="fa-solid fa-key"></i> CONFIGURAR API
               </button>
             )}
-            <button onClick={handleReset} className="text-xs font-bold text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors flex items-center gap-2">
-              <i className="fa-solid fa-rotate-left"></i>
-              Limpar
+            <button onClick={handleReset} className="text-xs font-bold text-slate-400 hover:text-red-500 flex items-center gap-2 transition-colors">
+              <i className="fa-solid fa-rotate-left"></i> RECOMEÇAR
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6">
-        {!hasKey && (
-          <div className="mb-8 p-8 bg-white border-2 border-amber-100 rounded-[2rem] shadow-xl shadow-amber-50 animate-slide-up flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center text-2xl">
-                <i className="fa-solid fa-shield-halved"></i>
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900">Configuração Necessária</h3>
-                <p className="text-sm text-slate-500 font-medium max-w-md">Para utilizar o motor de IA avançado, é necessário selecionar uma chave de API válida com faturamento ativo.</p>
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-xs text-blue-600 font-bold hover:underline mt-1 inline-block">Ver documentação de faturamento</a>
-              </div>
-            </div>
-            <button 
-              onClick={handleOpenKeySelector}
-              className="bg-slate-900 text-white font-black px-8 py-4 rounded-2xl hover:bg-black transition-all shadow-lg"
-            >
-              SELECIONAR CHAVE AGORA
-            </button>
-          </div>
-        )}
+      {/* CONTEÚDO PRINCIPAL */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          {/* PAINEL ESQUERDO: INPUTS */}
+          <div className="lg:col-span-5 space-y-8">
+            <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <span className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px]">01</span>
+                Ambiente Atual
+              </h3>
+              <ImageUploader onImageSelected={setOriginalImage} selectedImage={originalImage} />
+            </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* PAINEL DE CONTROLE (ESQUERDA) */}
-          <div className={`lg:col-span-5 space-y-6 ${!hasKey ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">1</span>
-                <h3 className="font-bold text-slate-800 text-lg">Carregar Ambiente</h3>
-              </div>
-              <ImageUploader onImageSelected={handleImageSelected} selectedImage={originalImage} />
-            </div>
-
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">2</span>
-                <h3 className="font-bold text-slate-800 text-lg">Definir Estilo</h3>
-              </div>
+            <section className={`bg-white rounded-3xl p-8 shadow-sm border border-slate-200 transition-all ${!originalImage ? 'opacity-50' : 'opacity-100'}`}>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <span className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px]">02</span>
+                Visão de Design
+              </h3>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Descreva o que deseja mudar... (ex: Transforme em um escritório moderno com tons de madeira)"
-                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-blue-500 focus:bg-white outline-none text-sm h-36 resize-none transition-all placeholder:text-slate-400 font-medium"
+                  disabled={!originalImage || isProcessing}
+                  placeholder="Ex: Transforme em uma sala industrial moderna com sofá cinza e plantas..."
+                  className="w-full p-5 rounded-2xl bg-slate-50 border border-slate-100 focus:border-slate-900 outline-none text-sm h-32 resize-none transition-all"
                 />
-                
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={handleDecorate}
-                    disabled={isProcessing || !originalImage || !prompt.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-100"
-                  >
-                    {isProcessing ? (
-                      <i className="fa-solid fa-circle-notch fa-spin"></i>
-                    ) : (
-                      <i className="fa-solid fa-wand-magic-sparkles"></i>
-                    )}
-                    DECORAR AMBIENTE
-                  </button>
-                  
-                  <button
-                    onClick={handleAutoDecorate}
-                    disabled={isProcessing || !originalImage}
-                    className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3"
-                  >
-                    <i className="fa-solid fa-bolt text-blue-500"></i>
-                    ESTILO ALEATÓRIO
-                  </button>
-                </div>
-              </div>
 
-              {error && (
-                <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <i className="fa-solid fa-triangle-exclamation"></i>
-                  {error}
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 block">Estilos Rápidos</label>
+                  <div className="flex flex-wrap gap-2">
+                    {QUICK_STYLES.map((style) => (
+                      <button
+                        key={style.label}
+                        onClick={() => setPrompt(style.prompt)}
+                        disabled={!originalImage || isProcessing}
+                        className="px-4 py-2 bg-slate-50 hover:bg-slate-200 rounded-full text-xs font-bold text-slate-600 transition-all border border-slate-100"
+                      >
+                        {style.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <button
+                  onClick={handleDecorate}
+                  disabled={isProcessing || !originalImage || !prompt.trim() || !hasKey}
+                  className="w-full bg-slate-900 hover:bg-black disabled:bg-slate-200 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+                >
+                  {isProcessing ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+                  {isProcessing ? "Renderizando..." : "Aplicar Decoração"}
+                </button>
+
+                {error && (
+                  <div className="p-4 bg-red-50 text-red-600 rounded-xl text-xs font-bold flex items-center gap-3">
+                    <i className="fa-solid fa-circle-exclamation"></i>
+                    {error}
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
 
-          {/* PAINEL DE RESULTADO (DIREITA) */}
+          {/* PAINEL DIREITO: RESULTADO */}
           <div className="lg:col-span-7">
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 min-h-[600px] flex flex-col">
-              <div className="flex items-center gap-3 mb-8">
-                <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">3</span>
-                <h3 className="font-bold text-slate-800 text-lg">Projeto Finalizado</h3>
-              </div>
-
+            <div className="bg-white rounded-3xl p-4 md:p-10 shadow-sm border border-slate-200 min-h-[600px] flex flex-col sticky top-28">
               {!result && !isProcessing && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-10 border-2 border-dashed border-slate-100 rounded-3xl">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-200">
-                    <i className="fa-solid fa-images text-4xl"></i>
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+                  <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-8 text-slate-200 animate-pulse">
+                    <i className="fa-solid fa-palette text-5xl"></i>
                   </div>
-                  <h4 className="text-slate-400 font-bold text-lg mb-2">Seu projeto aparecerá aqui</h4>
-                  <p className="text-slate-300 text-sm max-w-xs font-medium">Use os controles à esquerda para iniciar sua transformação.</p>
+                  <h4 className="text-xl font-black text-slate-900 mb-2">Pronto para a transformação?</h4>
+                  <p className="text-slate-400 text-sm max-w-xs mx-auto">Envie sua foto e descreva seu sonho para ver a mágica da IA acontecer.</p>
                 </div>
               )}
 
               {isProcessing && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <div className="relative mb-6">
-                    <div className="w-20 h-20 border-4 border-blue-50 border-t-blue-600 rounded-full animate-spin"></div>
-                    <i className="fa-solid fa-sparkles absolute inset-0 flex items-center justify-center text-blue-600 text-2xl animate-pulse"></i>
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+                  <div className="relative mb-8">
+                    <div className="w-20 h-20 border-4 border-slate-100 border-t-slate-900 rounded-full animate-spin"></div>
+                    <i className="fa-solid fa-sparkles absolute inset-0 flex items-center justify-center text-slate-900 text-2xl"></i>
                   </div>
-                  <h4 className="text-xl font-bold text-slate-800">IA Gerando Decoração</h4>
-                  <p className="text-slate-400 font-medium text-sm mt-2">Estamos renderizando seu novo ambiente...</p>
+                  <h4 className="text-xl font-black text-slate-900">Arquiteto de IA Trabalhando</h4>
+                  <p className="text-slate-400 text-sm mt-3 animate-pulse italic">Analisando iluminação e mobiliário...</p>
                 </div>
               )}
 
               {result && !isProcessing && (
-                <div id="results-area" className="flex-1 flex flex-col animate-fade-in">
+                <div id="results-area" className="flex-1 animate-fade-in flex flex-col">
                   <ComparisonView original={result.originalImage} decorated={result.decoratedImage} />
                   
-                  <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col sm:flex-row gap-4">
+                  <div className="mt-12 flex flex-col sm:flex-row gap-4 pt-8 border-t border-slate-100">
                     <button 
                       onClick={() => {
-                        const link = document.createElement('a');
-                        link.href = result.decoratedImage;
-                        link.download = `projeto-decorai-${Date.now()}.png`;
-                        link.click();
+                        const a = document.createElement('a');
+                        a.href = result.decoratedImage;
+                        a.download = `DecorAI-${Date.now()}.png`;
+                        a.click();
                       }}
-                      className="flex-[2] bg-slate-900 hover:bg-black text-white font-black py-4 px-8 rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98]"
+                      className="flex-[2] bg-slate-900 text-white font-black py-5 px-10 rounded-2xl flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
                     >
-                      <i className="fa-solid fa-cloud-arrow-down"></i> BAIXAR EM ALTA RESOLUÇÃO
+                      <i className="fa-solid fa-download"></i> SALVAR PROJETO EM HD
                     </button>
                     <button 
                       onClick={handleReset}
-                      className="flex-1 bg-white hover:bg-red-50 border border-slate-200 text-slate-500 hover:text-red-500 font-bold py-4 px-8 rounded-2xl transition-all"
+                      className="flex-1 bg-white border border-slate-200 text-slate-500 font-black py-5 px-10 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all"
                     >
                       DESCARTAR
                     </button>
@@ -292,13 +249,25 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
+
         </div>
       </main>
-      
-      <footer className="mt-20 text-center text-slate-400 py-10 border-t border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em]">
-          Desenvolvido por Renato Monteiro • 2025 • DecorAI Studio
-        </p>
+
+      {/* FOOTER ASSINATURA */}
+      <footer className="mt-20 py-12 bg-white border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center text-center">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-[1px] bg-slate-200"></div>
+            <i className="fa-solid fa-gem text-slate-300 text-[10px]"></i>
+            <div className="w-8 h-[1px] bg-slate-200"></div>
+          </div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
+            Desenvolvido por <span className="text-slate-900">Renato Monteiro</span> • 2025
+          </p>
+          <p className="text-[9px] font-medium text-slate-300 mt-2 italic">
+            DecorAI Studio • Inteligência Artificial para Arquitetura & Design
+          </p>
+        </div>
       </footer>
     </div>
   );

@@ -1,11 +1,10 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Fix: Initialize GoogleGenAI directly with process.env.API_KEY and use gemini-2.5-flash-image for image editing.
 export const decorateImage = async (base64Image: string, prompt: string): Promise<string> => {
+  // Inicializa a IA no momento do uso para garantir a chave mais recente do ambiente
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Format the base64 string (remove the prefix if present)
   const imageData = base64Image.split(',')[1] || base64Image;
   const mimeType = base64Image.match(/data:([^;]+);/)?.[1] || 'image/png';
 
@@ -21,9 +20,18 @@ export const decorateImage = async (base64Image: string, prompt: string): Promis
             },
           },
           {
-            text: `Modifique o cenário desta foto de decoração de interiores de acordo com este pedido: "${prompt}". 
-                   Mantenha a estrutura básica do cômodo, mas altere os móveis, cores, texturas e iluminação conforme solicitado. 
-                   O resultado deve ser fotorrealista e esteticamente agradável.`,
+            text: `ATUE COMO UM DESIGNER DE INTERIORES MASTER.
+            
+            TAREFA: Redecorar completamente o cenário desta foto baseado no seguinte pedido: "${prompt}".
+            
+            REGRAS CRÍTICAS:
+            1. PRESERVE A ESTRUTURA: Não altere a posição de paredes principais, janelas ou portas.
+            2. FOTORREALISMO: O resultado deve parecer uma fotografia profissional de revista de arquitetura.
+            3. COERÊNCIA: Substitua móveis antigos por novos móveis de design que sigam o estilo solicitado.
+            4. ILUMINAÇÃO: Aplique uma nova iluminação global que combine com o estilo sugerido (quente, fria, natural).
+            5. MATERIAIS: Adicione texturas realistas (madeira, mármore, tecidos finos, metal polido).
+            
+            Retorne a imagem final processada.`,
           },
         ],
       },
@@ -31,7 +39,6 @@ export const decorateImage = async (base64Image: string, prompt: string): Promis
 
     let resultImageUrl = '';
     
-    // Iterate through response parts to find the generated image
     if (response.candidates && response.candidates[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) {
@@ -42,12 +49,12 @@ export const decorateImage = async (base64Image: string, prompt: string): Promis
     }
 
     if (!resultImageUrl) {
-      throw new Error("O modelo não retornou uma imagem processada.");
+      throw new Error("A IA não conseguiu renderizar a imagem. Tente um prompt mais descritivo.");
     }
 
     return resultImageUrl;
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    throw new Error(error.message || "Falha ao processar a imagem. Tente novamente.");
+    console.error("Erro na API Gemini:", error);
+    throw new Error(error.message || "Erro de conexão com a IA. Verifique sua chave.");
   }
 };
