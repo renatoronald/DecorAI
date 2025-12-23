@@ -37,16 +37,16 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected, selected
       {!selectedImage ? (
         <div 
           onClick={triggerInput}
-          className="cursor-pointer border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors duration-300 h-64"
+          className="cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-blue-50/50 hover:border-blue-200 transition-all duration-300 h-48"
         >
-          <div className="bg-blue-100 p-4 rounded-full mb-4">
-            <i className="fa-solid fa-cloud-arrow-up text-3xl text-blue-600"></i>
+          <div className="bg-white p-3 rounded-xl shadow-sm mb-3">
+            <i className="fa-solid fa-cloud-arrow-up text-2xl text-blue-600"></i>
           </div>
-          <p className="text-slate-700 font-medium text-lg">Clique para enviar uma foto</p>
-          <p className="text-slate-500 text-sm mt-1">PNG, JPG ou JPEG (Máx 5MB)</p>
+          <p className="text-slate-700 font-bold text-sm">Carregar Foto</p>
+          <p className="text-slate-400 text-[10px] mt-1 font-medium">PNG, JPG (Máx 5MB)</p>
         </div>
       ) : (
-        <div className="relative group rounded-2xl overflow-hidden shadow-lg h-64 bg-slate-200">
+        <div className="relative group rounded-2xl overflow-hidden shadow-md h-48 bg-slate-100 border border-slate-200">
           <img 
             src={selectedImage} 
             alt="Upload Preview" 
@@ -54,10 +54,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected, selected
           />
           <div 
             onClick={triggerInput}
-            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+            className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-sm"
           >
-            <span className="text-white font-medium flex items-center gap-2">
-              <i className="fa-solid fa-rotate"></i> Trocar Imagem
+            <span className="text-white text-xs font-black flex items-center gap-2 uppercase tracking-wider">
+              <i className="fa-solid fa-rotate"></i> Trocar Foto
             </span>
           </div>
         </div>
