@@ -1,0 +1,7 @@
+{
+  "name": "DecorAI - Scenery Modifier",
+  "description": "An advanced interior decoration app that uses AI to transform your photos and redesign your spaces based on text descriptions.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
