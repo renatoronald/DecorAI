@@ -6,6 +6,14 @@ import LandingPage from './components/LandingPage';
 import { decorateImage } from './services/geminiService';
 import { AppStatus, DecorationResult } from './types';
 
+// Fix: Change window.aistudio declaration to use 'any' to avoid conflict with pre-defined AIStudio type
+// which causes errors about identical modifiers and subsequent property declarations.
+declare global {
+  interface Window {
+    aistudio: any;
+  }
+}
+
 const AUTO_STYLES = [
   "Estilo Moderno Minimalista",
   "Estilo Industrial Moderno",
@@ -17,6 +25,7 @@ const AUTO_STYLES = [
 
 const App: React.FC = () => {
   const [showApp, setShowApp] = useState<boolean>(false);
+  const [hasKey, setHasKey] = useState<boolean>(true);
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -24,8 +33,24 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const checkKey = async () => {
+      if (window.aistudio) {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      }
+    };
+    if (showApp) {
+      checkKey();
+      window.scrollTo(0, 0);
+    }
   }, [showApp]);
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      setHasKey(true); // Assume success per instructions
+    }
+  };
 
   const handleImageSelected = useCallback((base64: string) => {
     setOriginalImage(base64);
@@ -57,7 +82,13 @@ const App: React.FC = () => {
         document.getElementById('results-area')?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
     } catch (err: any) {
-      setError(err.message || "Erro ao processar imagem.");
+      console.error(err);
+      if (err.message?.includes("Requested entity was not found")) {
+        setHasKey(false);
+        setError("Erro de autenticação. Por favor, selecione sua chave de API novamente.");
+      } else {
+        setError(err.message || "Erro ao processar imagem.");
+      }
       setStatus(AppStatus.ERROR);
     }
   };
@@ -107,18 +138,48 @@ const App: React.FC = () => {
               <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Estúdio de Design</span>
             </div>
           </div>
-          <button onClick={handleReset} className="text-xs font-bold text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors flex items-center gap-2">
-            <i className="fa-solid fa-rotate-left"></i>
-            Limpar
-          </button>
+          <div className="flex items-center gap-4">
+            {!hasKey && (
+              <button 
+                onClick={handleOpenKeySelector}
+                className="text-[10px] font-black bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-2"
+              >
+                <i className="fa-solid fa-key"></i> CONFIGURAR CHAVE
+              </button>
+            )}
+            <button onClick={handleReset} className="text-xs font-bold text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors flex items-center gap-2">
+              <i className="fa-solid fa-rotate-left"></i>
+              Limpar
+            </button>
+          </div>
         </div>
       </nav>
 
       <main className="max-w-6xl mx-auto px-6">
+        {!hasKey && (
+          <div className="mb-8 p-8 bg-white border-2 border-amber-100 rounded-[2rem] shadow-xl shadow-amber-50 animate-slide-up flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center text-2xl">
+                <i className="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Configuração Necessária</h3>
+                <p className="text-sm text-slate-500 font-medium max-w-md">Para utilizar o motor de IA avançado, é necessário selecionar uma chave de API válida com faturamento ativo.</p>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-xs text-blue-600 font-bold hover:underline mt-1 inline-block">Ver documentação de faturamento</a>
+              </div>
+            </div>
+            <button 
+              onClick={handleOpenKeySelector}
+              className="bg-slate-900 text-white font-black px-8 py-4 rounded-2xl hover:bg-black transition-all shadow-lg"
+            >
+              SELECIONAR CHAVE AGORA
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
           {/* PAINEL DE CONTROLE (ESQUERDA) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className={`lg:col-span-5 space-y-6 ${!hasKey ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
               <div className="flex items-center gap-3 mb-6">
                 <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">1</span>
@@ -231,7 +292,6 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
-
         </div>
       </main>
       

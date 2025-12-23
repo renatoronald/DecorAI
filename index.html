@@ -15,6 +15,7 @@
             color: #1e293b;
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
         .glass-morphism {
             background: rgba(255, 255, 255, 0.85);
@@ -28,6 +29,13 @@
         }
         .animate-fade-in {
             animation: fadeIn 0.8s ease-out forwards;
+        }
+        .animate-slide-up {
+            animation: slideUp 0.8s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
     <script type="importmap">
