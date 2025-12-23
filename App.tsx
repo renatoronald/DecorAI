@@ -6,17 +6,8 @@ import LandingPage from './components/LandingPage';
 import { decorateImage } from './services/geminiService';
 import { AppStatus, DecorationResult } from './types';
 
-// Fix for TypeScript errors: Move AIStudio into global scope and use optional property to match environment expectations
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey(): Promise<boolean>;
-    openSelectKey(): Promise<void>;
-  }
-
-  interface Window {
-    aistudio?: AIStudio;
-  }
-}
+// The AIStudio and Window types are removed because they are provided by the environment,
+// and re-declaring them was causing duplicate identifier errors.
 
 const QUICK_STYLES = [
   { label: "Moderno Minimalista", prompt: "Estilo minimalista com cores neutras, poucos móveis de design e luz natural abundante." },
@@ -39,7 +30,9 @@ const App: React.FC = () => {
   // Fix for API key checking logic using window.aistudio
   useEffect(() => {
     const checkKey = async () => {
+      // @ts-ignore: aistudio is provided by the environment
       if (window.aistudio) {
+        // @ts-ignore
         const selected = await window.aistudio.hasSelectedApiKey();
         setHasKey(selected);
       }
@@ -52,7 +45,9 @@ const App: React.FC = () => {
 
   // Handle opening the key selector and mitigating race conditions as per guidelines
   const handleOpenKeySelector = async () => {
+    // @ts-ignore: aistudio is provided by the environment
     if (window.aistudio) {
+      // @ts-ignore
       await window.aistudio.openSelectKey();
       // Assume the key selection was successful to avoid race conditions
       setHasKey(true);
