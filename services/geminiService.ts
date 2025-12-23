@@ -1,13 +1,9 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+// Fix: Initialize GoogleGenAI directly with process.env.API_KEY and use gemini-2.5-flash-image for image editing.
 export const decorateImage = async (base64Image: string, prompt: string): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key não configurada. Por favor, verifique o ambiente.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   // Format the base64 string (remove the prefix if present)
   const imageData = base64Image.split(',')[1] || base64Image;

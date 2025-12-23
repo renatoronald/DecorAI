@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import ImageUploader from './components/ImageUploader';
 import ComparisonView from './components/ComparisonView';
+import LandingPage from './components/LandingPage';
 import { decorateImage } from './services/geminiService';
 import { AppStatus, DecorationResult } from './types';
 
@@ -16,6 +17,7 @@ const AUTO_STYLES = [
 ];
 
 const App: React.FC = () => {
+  const [showApp, setShowApp] = useState(false);
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -107,253 +109,195 @@ const App: React.FC = () => {
       canvas.width = img.width;
       canvas.height = img.height;
 
-      // Draw original decorated image
       ctx.drawImage(img, 0, 0);
 
-      // Add Watermark
-      const fontSize = Math.max(20, canvas.width * 0.03);
-      ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      const fontSize = Math.max(24, canvas.width * 0.04);
+      ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
       
-      // Shadow for readability
-      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
       ctx.shadowBlur = 10;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
       
-      const text = "Decorado por DecorAI";
+      const text = "Decorado com DecorAI";
       const metrics = ctx.measureText(text);
-      const padding = 20;
+      
+      const paddingX = canvas.width * 0.04;
+      const paddingY = canvas.height * 0.06;
       
       ctx.fillText(
         text, 
-        canvas.width - metrics.width - padding, 
-        canvas.height - padding
+        canvas.width - metrics.width - paddingX, 
+        canvas.height - paddingY
       );
 
-      // Trigger download
       const watermarkedUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `decoracao_ai_${Date.now()}.png`;
+      link.download = `decorai_projeto_${Date.now()}.png`;
       link.href = watermarkedUrl;
       link.click();
     };
   };
 
+  if (!showApp) {
+    return <LandingPage onStart={() => setShowApp(true)} />;
+  }
+
   const isDecorateDisabled = status === AppStatus.PROCESSING || !originalImage || !prompt.trim();
   const isAutoDecorateDisabled = status === AppStatus.PROCESSING;
 
   return (
-    <div className="min-h-screen pb-12">
-      {/* Header */}
-      <nav className="glass-morphism sticky top-0 z-50 px-6 py-4 mb-8">
+    <div className="min-h-screen pb-20 selection:bg-blue-100 selection:text-blue-900 bg-slate-50/30">
+      <nav className="backdrop-blur-md bg-white/70 sticky top-0 z-50 px-6 py-4 mb-8 border-b border-slate-200">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-200">
+          <div 
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => setShowApp(false)}
+          >
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 rounded-xl text-white shadow-lg shadow-blue-200 ring-2 ring-white/20">
               <i className="fa-solid fa-house-chimney-window text-xl"></i>
             </div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">DecorAI</h1>
+            <div>
+              <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">DecorAI</h1>
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">IA Design Studio</span>
+            </div>
           </div>
-          <p className="hidden md:block text-slate-500 font-medium">Design de interiores inteligente</p>
+          <div className="hidden md:flex items-center gap-6">
+            <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold">
+              <i className="fa-solid fa-circle-check text-emerald-500"></i>
+              Powered by Gemini
+            </div>
+            <div className="h-4 w-px bg-slate-200"></div>
+            <p className="text-slate-400 font-medium text-xs">Transformação fotorrealista</p>
+          </div>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto px-6">
-        {/* Hero Section */}
-        <section className="text-center mb-10">
-          <h2 className="text-4xl font-extrabold text-slate-900 mb-4 leading-tight">
-            Reimagine seu <span className="text-blue-600 underline decoration-blue-200 underline-offset-8">cenário</span> num clique
+        <section className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+          <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 leading-[1.1]">
+            Redecore sua casa <br />
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">usando apenas uma foto</span>
           </h2>
-          <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-            Envie uma foto e transforme seu ambiente. Use a caixa de texto para um estilo próprio ou o botão de <b>Decoração Automática</b> para uma surpresa instantânea.
+          <p className="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
+            Mude móveis, cores e estilos instantaneamente. Carregue uma imagem e deixe nossa inteligência artificial fazer o resto.
           </p>
         </section>
 
-        {/* Action Area */}
-        <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8 border border-slate-100">
-          <div className="space-y-8">
-            {/* Step 1: Upload */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">1</span>
-                <h3 className="text-lg font-bold text-slate-800">Escolha seu ambiente</h3>
+        <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/60 p-6 md:p-10 border border-slate-100 relative overflow-hidden">
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+          
+          <div className="space-y-10 relative z-10">
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-blue-600 text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg shadow-blue-200">1</div>
+                <h3 className="text-xl font-bold text-slate-800">Selecione seu ambiente</h3>
               </div>
               <ImageUploader 
                 onImageSelected={handleImageSelected} 
                 selectedImage={originalImage} 
               />
-            </div>
+            </section>
 
-            {/* Step 2: Description */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">2</span>
-                <h3 className="text-lg font-bold text-slate-800">Descreva as alterações</h3>
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-blue-600 text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg shadow-blue-200">2</div>
+                <h3 className="text-xl font-bold text-slate-800">Como você quer decorar?</h3>
               </div>
-              <div className="relative">
+              <div className="relative group">
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Ex: Mude o sofá para um de couro marrom, adicione plantas no canto e troque a cor das paredes para azul marinho..."
-                  className="w-full p-4 pr-12 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all h-32 resize-none text-slate-700 bg-slate-50"
-                  disabled={status === AppStatus.PROCESSING}
+                  placeholder="Ex: Transforme em uma sala moderna com tons pastéis, adicione um sofá de veludo azul e muitas plantas..."
+                  className="w-full p-6 rounded-[1.5rem] border-2 border-slate-100 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all min-h-[120px] bg-slate-50 text-slate-800 placeholder:text-slate-400 font-medium"
                 />
-                <div className="absolute right-4 bottom-4 text-slate-300">
-                  <i className="fa-solid fa-pen-nib"></i>
-                </div>
               </div>
-            </div>
 
-            {/* Step 3: Action Buttons */}
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col md:flex-row gap-4 mt-8">
                 <button
                   onClick={handleDecorate}
                   disabled={isDecorateDisabled}
-                  title={!prompt.trim() ? "Escreva algo para liberar este botão" : ""}
-                  className={`w-full py-4 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-lg ${
-                    isDecorateDisabled
-                      ? 'bg-slate-300 cursor-not-allowed shadow-none grayscale opacity-70'
-                      : 'bg-blue-600 hover:bg-blue-700 hover:shadow-blue-200'
-                  }`}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
                 >
-                  {status === AppStatus.PROCESSING && !prompt.includes("Estilo") ? (
+                  {status === AppStatus.PROCESSING ? (
                     <>
                       <i className="fa-solid fa-circle-notch fa-spin"></i>
-                      Decorando...
+                      Processando...
                     </>
                   ) : (
                     <>
                       <i className="fa-solid fa-wand-magic-sparkles"></i>
-                      Decorar Agora
+                      Decorar agora
                     </>
                   )}
                 </button>
-
+                
                 <button
                   onClick={handleAutoDecorate}
                   disabled={isAutoDecorateDisabled}
-                  className={`w-full py-4 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-lg ${
-                    isAutoDecorateDisabled
-                      ? 'bg-slate-300 cursor-not-allowed shadow-none grayscale opacity-70'
-                      : 'bg-purple-600 hover:bg-purple-700 hover:shadow-purple-200'
-                  }`}
+                  className="bg-white hover:bg-slate-50 border-2 border-blue-600 text-blue-600 font-bold py-4 px-8 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
                 >
-                   {status === AppStatus.PROCESSING && prompt.includes("Estilo") ? (
-                    <>
-                      <i className="fa-solid fa-circle-notch fa-spin"></i>
-                      Criando Estilo...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-solid fa-robot"></i>
-                      Decoração Automática
-                    </>
-                  )}
+                  <i className="fa-solid fa-bolt"></i>
+                  Surpreenda-me!
                 </button>
               </div>
 
-              {status === AppStatus.SUCCESS && (
-                <button
-                  onClick={handleReset}
-                  className="w-full py-3 rounded-2xl text-slate-500 font-semibold hover:bg-slate-100 transition-colors"
-                >
-                  Limpar e começar de novo
-                </button>
+              {error && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3 text-sm font-semibold">
+                  <i className="fa-solid fa-circle-exclamation text-lg"></i>
+                  {error}
+                </div>
               )}
-            </div>
+            </section>
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl flex items-start gap-3 animate-pulse">
-                <i className="fa-solid fa-triangle-exclamation text-red-500 mt-1"></i>
-                <p className="text-red-700 text-sm font-medium">{error}</p>
-              </div>
+            {(result || status === AppStatus.PROCESSING) && (
+              <section id="results-area" className="pt-10 border-t border-slate-100">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="bg-blue-600 text-white w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg shadow-blue-200">3</div>
+                  <h3 className="text-xl font-bold text-slate-800">Resultado do seu projeto</h3>
+                </div>
+
+                {status === AppStatus.PROCESSING ? (
+                  <div className="bg-slate-50 rounded-3xl p-12 flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-slate-200">
+                    <div className="relative">
+                      <div className="w-20 h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                      <i className="fa-solid fa-couch absolute inset-0 flex items-center justify-center text-blue-600 text-2xl"></i>
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-bold text-slate-800">Criando sua nova decoração...</h4>
+                      <p className="text-slate-500">Isso pode levar alguns segundos. Estamos usando IA para renderizar seu ambiente.</p>
+                    </div>
+                  </div>
+                ) : result && (
+                  <div className="space-y-8 animate-in fade-in duration-500">
+                    <ComparisonView original={result.originalImage} decorated={result.decoratedImage} />
+                    
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                      <button 
+                        onClick={handleDownload}
+                        className="flex-1 bg-slate-900 hover:bg-black text-white font-bold py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3"
+                      >
+                        <i className="fa-solid fa-download"></i>
+                        Baixar Imagem em HD
+                      </button>
+                      <button 
+                        onClick={handleReset}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3"
+                      >
+                        <i className="fa-solid fa-trash-can"></i>
+                        Recomeçar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
             )}
           </div>
         </div>
 
-        {/* Results Area */}
-        {result && (
-          <div id="results-area" className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="text-center mb-8">
-              <span className="bg-green-100 text-green-700 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-2 inline-block">Projeto Finalizado</span>
-              <h3 className="text-2xl font-bold text-slate-800">Veja o antes e depois</h3>
-              <p className="text-slate-500 text-sm mt-1 italic">"{result.prompt}"</p>
-            </div>
-            
-            <ComparisonView 
-              original={result.originalImage} 
-              decorated={result.decoratedImage} 
-            />
-
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={handleAutoDecorate}
-                disabled={status === AppStatus.PROCESSING}
-                className="bg-blue-50 border-2 border-blue-200 text-blue-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors disabled:opacity-50"
-              >
-                {status === AppStatus.PROCESSING ? (
-                  <i className="fa-solid fa-circle-notch fa-spin"></i>
-                ) : (
-                  <i className="fa-solid fa-rotate-right"></i>
-                )}
-                Outra Versão
-              </button>
-
-              <button 
-                onClick={handleDownload}
-                className="bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"
-              >
-                <i className="fa-solid fa-download"></i> Baixar Imagem
-              </button>
-
-              <button 
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({
-                      title: 'Minha nova decoração com DecorAI',
-                      text: `Olha como ficou meu ambiente usando IA! Estilo: ${result.prompt}`,
-                      url: window.location.href
-                    });
-                  }
-                }}
-                className="bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"
-              >
-                <i className="fa-solid fa-share-nodes"></i> Compartilhar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Feature Highlights */}
-        <section className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 text-center hover:shadow-md transition-shadow">
-            <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <i className="fa-solid fa-bolt text-xl"></i>
-            </div>
-            <h4 className="font-bold text-slate-800 mb-2">Processamento Rápido</h4>
-            <p className="text-slate-500 text-sm">Gere novos designs em questão de segundos com o poder da IA.</p>
-          </div>
-          <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 text-center hover:shadow-md transition-shadow">
-            <div className="bg-orange-100 text-orange-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <i className="fa-solid fa-camera text-xl"></i>
-            </div>
-            <h4 className="font-bold text-slate-800 mb-2">Fotos Reais</h4>
-            <p className="text-slate-500 text-sm">Basta uma foto do seu ambiente. A IA reconhece o espaço automaticamente.</p>
-          </div>
-          <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 text-center hover:shadow-md transition-shadow">
-            <div className="bg-green-100 text-green-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <i className="fa-solid fa-couch text-xl"></i>
-            </div>
-            <h4 className="font-bold text-slate-800 mb-2">Estilo Livre</h4>
-            <p className="text-slate-500 text-sm">Explore dezenas de estilos decorativos com o modo automático ou manual.</p>
-          </div>
-        </section>
+        <p className="mt-12 text-center text-slate-400 text-sm font-medium">
+          &copy; {new Date().getFullYear()} DecorAI Studio &bull; Inteligência Artificial para Interiores
+        </p>
       </main>
-
-      {/* Footer */}
-      <footer className="mt-20 border-t border-slate-200 pt-10 text-center">
-        <p className="text-slate-400 text-sm">© 2024 DecorAI Labs. Transformando espaços com inteligência artificial.</p>
-      </footer>
     </div>
   );
 };
